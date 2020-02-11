@@ -1,6 +1,38 @@
 const path = require('path')
 const HTMLWebpackPlugin = require('html-webpack-plugin')
 const {CleanWebpackPlugin} = require('clean-webpack-plugin')
+const CopyWebpackPlugin = require('copy-webpack-plugin')
+const MiniCssExtractPlugin = require('mini-css-extract-plugin')
+const TerserWebpackPlugin = require('terser-webpack-plugin')
+const OptimizeCssAssetsPlugin = require('optimize-css-assets-webpack-plugin')
+
+const isDev = process.env.NODE_ENV === 'development'
+const isProd = !isDev
+
+
+const optimization = () => {
+  const config = {
+    splitChunks: {
+      chunks: "all"
+    }
+  }
+  if(isProd) {
+    config.minimizer = [
+      new TerserWebpackPlugin(),
+      new OptimizeCssAssetsPlugin()
+  ]}
+  return config
+}
+
+const filename = ext => isDev ? `[name].${ext}` : `[name].[hash].${ext}`
+
+const cssLoaders = ext => {
+  const loaders = [{loader: MiniCssExtractPlugin.loader}, 'css-loader']
+  if(ext) {
+    loaders.push(ext)
+  }
+  return loaders
+}
 
 
 module.exports = {
@@ -8,26 +40,44 @@ module.exports = {
   mode: 'development',
   entry: {
     main: './index.js',
-    analytics: './analytics.js'
+    // analytics: './analytics.js'  // для отдельного скрипта
   },
   output: {
-    filename: '[name].[contenthash].js',
+    filename: filename('js'),   // '[name].[hash].js'
     path: path.resolve(__dirname, 'dist')
   },
-  optimization: {
-    splitChunks: {chunks: "all"}
+  optimization: optimization(),
+  devServer: {
+
   },
+  devtool: 'source-map',
   plugins: [
       new HTMLWebpackPlugin({
-        template: './index.html'
+        template: './index.html',
+        minify: {
+          collapseWhitespace: isProd
+        }
       }),
     new CleanWebpackPlugin(),
+    new CopyWebpackPlugin([
+      {
+        from: path.resolve(__dirname, 'src/favicon/favicon.ico'),
+        to: path.resolve(__dirname, 'dist')
+      },
+    ]),
+    new MiniCssExtractPlugin({
+      filename: filename('css'), // '[name].[hash].css'
+    })
   ],
   module: {
     rules: [
       {
         test: /\.css$/,
-        use: ['style-loader', 'css-loader']
+        use: cssLoaders()
+      },
+      {
+        test: /\.s[ac]ss$/,
+        use: cssLoaders('sass-loader')
       },
       {
         test: /\.(png|jpg|svg|gif)$/,
@@ -39,79 +89,4 @@ module.exports = {
       },
     ]
   }
-
-
 }
-
-
-
-
-
-// const HTMLWebpackPlugin = require('html-webpack-plugin')
-// const {CleanWebpackPlugin} = require('clean-webpack-plugin')
-// const BrowserSyncPlugin = require('browser-sync-webpack-plugin')
-// const CopyPlugin = require('copy-webpack-plugin')
-// const MiniCssExtractPlugin = require('mini-css-extract-plugin')
-//
-// module.exports = {
-//   entry: './src/js/index.js',
-//   output: {
-//     filename: 'main.js',
-//     path: path.resolve(__dirname, 'dist'),
-//   },
-//   plugins: [
-//       new CleanWebpackPlugin(),
-//       new HTMLWebpackPlugin({
-//         filename: 'index.html',
-//         template: './src/html/index.html',
-//         files: {
-//           js: [ "../js/index.js"],
-//         }
-//     }),
-//       new HTMLWebpackPlugin({
-//         filename: 'index2.html',
-//         template: './src/html/index2.html',
-//         files: {
-//           js: [ "../js/index2.js"],
-//         }
-//       }),
-//     new BrowserSyncPlugin({
-//       host: 'localhost',
-//       port: 3000,
-//       server: { baseDir: ['./dist'] }
-//     }),
-//       // new CopyPlugin([
-//       //   {
-//       //     from: path.resolve(__dirname, 'src/img/'),
-//       //     to: path.resolve(__dirname, 'dist/img')
-//       //   },
-//       //   {
-//       //     from: path.resolve(__dirname, 'src/fonts'),
-//       //     to: path.resolve(__dirname, 'dist/fonts')
-//       //   }
-//       //   ]),
-//       new MiniCssExtractPlugin({
-//         filename: '[name].css',
-//       })
-//   ],
-//   module: {
-//     rules: [{
-//         test: /\.css$/,
-//         use: [
-//           {
-//             loader: MiniCssExtractPlugin.loader,
-//             options: {
-//               hmr: true,
-//               reloadAll: true
-//             },
-//           },
-//           'css-loader',
-//         ],
-//       },
-//       {
-//         test: /\.(png|jpg|svg|gif)$/,
-//         use: [ 'file-loader'],
-//       },
-//     ],
-//   },
-// };
